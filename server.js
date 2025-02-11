@@ -1,60 +1,42 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const axios = require("axios");
-require("dotenv").config(); // ✅ .env से TOKEN लेने के लिए
+const TelegramBot = require("node-telegram-bot-api");
 
 const app = express();
+const bot = new TelegramBot("7821024795:AAGfdozO4IPBy_20yZiKypxh0HECwIMQoP8", { polling: false });
+
 app.use(bodyParser.json());
 
-const BOT_TOKEN = process.env.BOT_TOKEN; // ✅ Render में Bot Token सेव करें
-
-// ✅ होम पेज API (Fix for "Cannot GET /")
+// ✅ API Status Check
 app.get("/", (req, res) => {
     res.send("✅ Broadcast API is running successfully!");
 });
 
-// ✅ ब्रॉडकास्ट API
-app.post("/broadcast", async (req, res) => {
+// ✅ Broadcast Route
+app.post("/save-broadcast", async (req, res) => {
     const { message, image, users } = req.body;
 
-    if (!users || users.length === 0) {
-        return res.status(400).send("❌ No users provided!");
+    if (!message || !users) {
+        return res.status(400).send("❌ Invalid request, missing data");
     }
 
     for (const userId of users) {
         try {
-            if (image && message) {
-                // ✅ इमेज + टेक्स्ट
-                await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    chat_id: userId,
-                    photo: image,
-                    caption: message,
-                    parse_mode: "HTML"
-                });
-            } else if (image) {
-                // ✅ सिर्फ इमेज
-                await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    chat_id: userId,
-                    photo: image
-                });
-            } else if (message) {
-                // ✅ सिर्फ टेक्स्ट
-                await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    chat_id: userId,
-                    text: message,
-                    parse_mode: "HTML"
-                });
+            if (image) {
+                await bot.sendPhoto(userId, image, { caption: message });
+            } else {
+                await bot.sendMessage(userId, message);
             }
         } catch (error) {
-            console.error(`❌ Error sending to ${userId}:`, error.response ? error.response.data : error.message);
+            console.error(`❌ Error sending to ${userId}:`, error.message);
         }
     }
 
     res.send("✅ ब्रॉडकास्ट सफलतापूर्वक भेजा गया!");
 });
 
-// ✅ सर्वर रन करें
+// ✅ Server Start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`✅ Broadcast API is running on port ${PORT}`);
+    console.log(`🚀 Broadcast API running on port ${PORT}`);
 });
